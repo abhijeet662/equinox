@@ -185,7 +185,7 @@ const EmployeeMeetingsPage: React.FC = () => {
                   </button>
                   {isUpcoming && (
                     <button
-                      onClick={() => toast.info('Meeting link will be sent to your email')}
+                      onClick={() => toast('Meeting link will be sent to your email')}
                       className="btn-primary text-xs flex items-center gap-1"
                     >
                       <Video size={12} /> Join

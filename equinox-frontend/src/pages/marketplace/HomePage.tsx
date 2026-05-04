@@ -13,8 +13,10 @@ import { useApi } from '../../hooks/useApi';
 import { providersService } from '../../services/providers.service';
 
 // ─── Framer helpers ────────────────────────────────────────────────────────────
-const fadeUp = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } } };
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fadeUp: any = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } } };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const stagger: any = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
 function Section({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);

@@ -16,6 +16,8 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   avatar: string;
+  status?: string;
+  company?: string;
 }
 
 export interface Breadcrumb {

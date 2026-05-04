@@ -70,7 +70,7 @@ function QuizEngine({
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<QuizSubmitResult | null>(null);
   const [timeLeft, setTimeLeft] = useState(quiz.timeLimitMins * 60);
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -506,7 +506,9 @@ export default function ProviderTrainingPage() {
       // Attach enrollment data
       const enrollments = await lmsService.myEnrollments();
       const enrollMap = new Map(enrollments.map(e => [e.courseId, e]));
-      const enriched = (coursesRes.data ?? coursesRes).map((c: LMSCourse) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const courseList: LMSCourse[] = (coursesRes as any).data ?? coursesRes;
+      const enriched = courseList.map((c: LMSCourse) => ({
         ...c,
         enrollment: enrollMap.get(c.id) ?? null,
       }));

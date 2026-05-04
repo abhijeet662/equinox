@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE_URL = (import.meta as Record<string, Record<string, string>>).env?.VITE_API_URL || 'http://localhost:4000/api';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000/api';
 
 const api = axios.create({
   baseURL: BASE_URL,

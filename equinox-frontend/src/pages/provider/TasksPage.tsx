@@ -343,7 +343,7 @@ const TasksPage: React.FC = () => {
                         <span className={`badge text-xs font-bold ${priorityColor[priority] || 'bg-surface-100 text-surface-600'}`}>
                           {priority}
                         </span>
-                        {locked && <Lock size={12} className="text-amber-500" title="Certification required" />}
+                        {locked && <span title="Certification required"><Lock size={12} className="text-amber-500" /></span>}
                       </div>
                     </td>
                     <td className="table-td">

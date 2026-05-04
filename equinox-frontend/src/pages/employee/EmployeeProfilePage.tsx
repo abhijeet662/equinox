@@ -187,14 +187,14 @@ const EmployeeProfilePage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => toast.info('Document preview coming soon')}
+                        onClick={() => toast('Document preview coming soon')}
                         className="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center text-surface-400 hover:text-primary-600 transition-colors"
                         title="View"
                       >
                         <Eye size={14} />
                       </button>
                       <button
-                        onClick={() => toast.info('Download starting…')}
+                        onClick={() => toast('Download starting…')}
                         className="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center text-surface-400 hover:text-primary-600 transition-colors"
                         title="Download"
                       >

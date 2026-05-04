@@ -54,7 +54,7 @@ const BuyerMeetingsPage: React.FC = () => {
   };
 
   const handleJoin = () => {
-    toast.info('Meeting link will be sent to your email');
+    toast('Meeting link will be sent to your email');
   };
 
   return (
