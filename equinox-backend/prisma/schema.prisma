@@ -1,0 +1,807 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  PROVIDER
+  BUYER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum TaskPriority {
+  P0
+  P1
+  P2
+  P3
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum ContractType {
+  PROJECT
+  RETAINER
+  MILESTONE
+  HOURLY
+  FIXED_PRICE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+  DISPUTED
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  TASK
+  INVOICE
+  COMPLAINT
+  SYSTEM
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  UNPAID
+  OTHER
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MeetingType {
+  STANDUP
+  PLANNING
+  REVIEW
+  RETROSPECTIVE
+  CLIENT
+  ONE_ON_ONE
+  OTHER
+}
+
+enum MandateStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  CANCELLED
+  FAILED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ReviewStatus {
+  PENDING_MODERATION
+  PUBLISHED
+  REJECTED
+  FLAGGED
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  IN_PROGRESS
+  COMPLETED
+  DROPPED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AssetType {
+  LAPTOP
+  DESKTOP
+  MOBILE
+  TABLET
+  PERIPHERAL
+  SERVER
+  SOFTWARE_LICENSE
+  API_KEY
+  MARKETPLACE_CREDENTIAL
+  OTHER_HARDWARE
+  OTHER_SOFTWARE
+}
+
+enum AssetStatus {
+  AVAILABLE
+  ASSIGNED
+  MAINTENANCE
+  REVOKED
+  RETIRED
+  LOST
+}
+
+// ─── MODELS ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String
+  name      String
+  role      UserRole   @default(BUYER)
+  status    UserStatus @default(ACTIVE)
+  avatar    String?
+  phone     String?
+  company   String?
+  timezone   String     @default("UTC")
+  language   String     @default("en")
+  mfaEnabled Boolean    @default(false)
+  mfaSecret  String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  providerProfile     ProviderProfile?
+  employeeProfile     EmployeeProfile?
+  walletAccount       WalletAccount?
+  tasksAssigned       Task[]             @relation("TaskAssignee")
+  tasksCreated        Task[]             @relation("TaskCreator")
+  contractsAsBuyer    Contract[]         @relation("ContractBuyer")
+  contractsAsProvider Contract[]         @relation("ContractProvider")
+  invoicesAsBuyer     Invoice[]          @relation("InvoiceBuyer")
+  invoicesAsProvider  Invoice[]          @relation("InvoiceProvider")
+  complaintsRaised    Complaint[]        @relation("ComplaintRaiser")
+  complaintsAgainst   Complaint[]        @relation("ComplaintTarget")
+  reviewsGiven        Review[]
+  notifications       Notification[]
+  leaveRequests       LeaveRequest[]
+  leaveApprovals      LeaveRequest[]     @relation("LeaveApprover")
+  kpiRecords          KPIRecord[]
+  aiInsights          AIInsight[]
+  refreshTokens       RefreshToken[]
+  meetingsOrganized   Meeting[]          @relation("MeetingOrganizer")
+  meetingAttendances  MeetingAttendee[]
+  mandates            PaymentMandate[]
+  courseEnrollments   LMSEnrollment[]
+  coursesCreated      LMSCourse[]        @relation("CourseCreator")
+  quizAttempts           LMSQuizAttempt[]
+  certifications         LMSCertification[]
+  marketplaceConnections MarketplaceConnection[]
+  priceChangeLogs        PriceChangeLog[]
+  assetsAssigned         Asset[]                @relation("AssetAssignee")
+  assetsCreated          Asset[]                @relation("AssetCreator")
+
+  @@index([email])
+  @@index([role])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model ProviderProfile {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName   String
+  description    String?  @db.Text
+  category       String
+  services       String[]
+  location       String?
+  address        String?
+  website        String?
+  logoInitials   String?
+  rating         Float    @default(0)
+  reviewCount    Int      @default(0)
+  completedJobs  Int      @default(0)
+  verified           Boolean            @default(false)
+  isVerified         Boolean            @default(false)
+  featured           Boolean            @default(false)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  rejectionReason    String?
+  verifiedAt         DateTime?
+  documentUrls       String[]
+
+  // ─── Featured / Subscription ──────────────────────────────────────────────
+  joinedDate         DateTime           @default(now())
+  isFeatured         Boolean            @default(true)   // true for all new signups; background job expires it
+  subscriptionActive Boolean            @default(false)  // paid subscription overrides expiry
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  reviews Review[]
+
+  @@index([category])
+  @@index([rating])
+}
+
+model EmployeeProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employeeId  String?
+  department  String?
+  jobTitle    String?
+  managerId   String?
+  annualLeave Int      @default(21)
+  sickLeave   Int      @default(10)
+  usedAnnual  Int      @default(0)
+  usedSick    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  title       String
+  description String?      @db.Text
+  priority    TaskPriority @default(P2)
+  status      TaskStatus   @default(TODO)
+  tags        String[]
+  dueDate     DateTime?
+  slaHours    Int?
+  completedAt DateTime?
+  assignedToId String?
+  assignedTo  User?        @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  createdById String
+  createdBy   User         @relation("TaskCreator", fields: [createdById], references: [id])
+  contractId  String?
+  contract    Contract?    @relation(fields: [contractId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([assignedToId])
+  @@index([createdById])
+}
+
+model Contract {
+  id          String         @id @default(uuid())
+  title       String
+  description String?        @db.Text
+  type        ContractType   @default(PROJECT)
+  status      ContractStatus @default(DRAFT)
+  value       Float          @default(0)
+  currency    String         @default("USD")
+  startDate   DateTime?
+  endDate     DateTime?
+  terms       String?        @db.Text
+  providerId  String
+  provider    User           @relation("ContractProvider", fields: [providerId], references: [id])
+  buyerId     String
+  buyer       User           @relation("ContractBuyer", fields: [buyerId], references: [id])
+  tasks       Task[]
+  invoices    Invoice[]
+  complaints  Complaint[]
+  meetings    Meeting[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status])
+  @@index([providerId])
+  @@index([buyerId])
+}
+
+model Invoice {
+  id         String        @id @default(uuid())
+  invoiceNo  String        @unique
+  status     InvoiceStatus @default(DRAFT)
+  subtotal   Float         @default(0)
+  tax        Float         @default(0)
+  total      Float         @default(0)
+  currency   String        @default("USD")
+  dueDate    DateTime?
+  paidAt     DateTime?
+  notes      String?       @db.Text
+  providerId String
+  provider   User          @relation("InvoiceProvider", fields: [providerId], references: [id])
+  buyerId    String
+  buyer      User          @relation("InvoiceBuyer", fields: [buyerId], references: [id])
+  contractId String?
+  contract   Contract?     @relation(fields: [contractId], references: [id])
+  items      InvoiceItem[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([status])
+  @@index([providerId])
+  @@index([buyerId])
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  description String
+  quantity    Float   @default(1)
+  unitPrice   Float
+  total       Float
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model WalletAccount {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance      Float    @default(0)
+  currency     String   @default("USD")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String            @id @default(uuid())
+  type        TransactionType
+  amount      Float
+  description String?
+  reference   String?
+  status      TransactionStatus @default(COMPLETED)
+  walletId    String
+  wallet      WalletAccount     @relation(fields: [walletId], references: [id])
+  createdAt   DateTime          @default(now())
+
+  @@index([walletId])
+  @@index([type])
+}
+
+model Complaint {
+  id          String            @id @default(uuid())
+  title       String
+  description String            @db.Text
+  status      ComplaintStatus   @default(OPEN)
+  priority    ComplaintPriority @default(MEDIUM)
+  resolution  String?           @db.Text
+  resolvedAt  DateTime?
+  raisedById  String
+  raisedBy    User              @relation("ComplaintRaiser", fields: [raisedById], references: [id])
+  againstId   String?
+  against     User?             @relation("ComplaintTarget", fields: [againstId], references: [id])
+  contractId  String?
+  contract    Contract?         @relation(fields: [contractId], references: [id])
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status])
+  @@index([raisedById])
+}
+
+model Review {
+  id             String       @id @default(uuid())
+  rating         Int
+  comment        String?      @db.Text
+  buyerId        String
+  buyer          User         @relation(fields: [buyerId], references: [id])
+  providerId     String
+  provider       ProviderProfile @relation(fields: [providerId], references: [id])
+  contractId     String?
+  status         ReviewStatus @default(PENDING_MODERATION)
+  isPublic       Boolean      @default(false)
+  moderatorNote  String?      @db.Text
+  publishedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([buyerId, providerId])
+  @@index([providerId])
+  @@index([status])
+}
+
+model KPIRecord {
+  id        String   @id @default(uuid())
+  metric    String
+  value     Float
+  target    Float?
+  unit      String?
+  period    String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([period])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType @default(INFO)
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  link      String?
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([read])
+}
+
+model LeaveRequest {
+  id           String      @id @default(uuid())
+  type         LeaveType
+  startDate    DateTime
+  endDate      DateTime
+  days         Int
+  reason       String?
+  status       LeaveStatus @default(PENDING)
+  adminNote    String?
+  reviewedAt   DateTime?
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+  approvedById String?
+  approvedBy   User?       @relation("LeaveApprover", fields: [approvedById], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model AIInsight {
+  id         String   @id @default(uuid())
+  type       String
+  title      String
+  content    String   @db.Text
+  metadata   Json?
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+}
+
+// ─── MEETINGS / MOM ───────────────────────────────────────────────────────────
+
+model Meeting {
+  id           String        @id @default(uuid())
+  title        String
+  type         MeetingType   @default(OTHER)
+  status       MeetingStatus @default(SCHEDULED)
+  scheduledAt  DateTime
+  duration     Int           @default(30)  // minutes
+  location     String?       // URL or physical location
+  agenda       String?       @db.Text
+  mom          String?       @db.Text      // AI-generated Minutes of Meeting
+  momGeneratedAt DateTime?
+  contractId   String?
+  contract     Contract?     @relation(fields: [contractId], references: [id])
+  organizerId  String
+  organizer    User          @relation("MeetingOrganizer", fields: [organizerId], references: [id])
+  attendees    MeetingAttendee[]
+  actionItems  MeetingActionItem[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([organizerId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model MeetingAttendee {
+  id        String   @id @default(uuid())
+  meetingId String
+  meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  attended  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
+}
+
+model MeetingActionItem {
+  id          String   @id @default(uuid())
+  meetingId   String
+  meeting     Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  description String
+  assigneeId  String?
+  dueDate     DateTime?
+  done        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([meetingId])
+}
+
+// ─── ENACH / PAYMENT MANDATES ─────────────────────────────────────────────────
+
+model PaymentMandate {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  bankName        String
+  accountNumber   String        // masked
+  ifscCode        String
+  accountHolder   String
+  maxAmount       Float         // max debit per cycle
+  frequency       String        @default("MONTHLY") // MONTHLY, WEEKLY, QUARTERLY
+  nextDebitDate   DateTime?
+  status          MandateStatus @default(PENDING)
+  mandateRef      String?       // bank reference
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ─── LMS — LEARNING MANAGEMENT SYSTEM ────────────────────────────────────────
+
+model LMSCourse {
+  id               String       @id @default(uuid())
+  title            String
+  description      String?      @db.Text
+  category         String
+  level            String       @default("BEGINNER") // BEGINNER, INTERMEDIATE, ADVANCED
+  duration         Int          @default(60)          // minutes
+  tags             String[]
+  status           CourseStatus @default(DRAFT)
+  requiredForTier  String?      // e.g. "P0", "P1" — unlocks that task tier on completion
+  prerequisiteId   String?      // courseId of prerequisite course
+  thumbnailEmoji   String?      // optional emoji for card display
+  videoUrl         String?      // intro/promo video
+  createdById      String
+  createdBy        User         @relation("CourseCreator", fields: [createdById], references: [id])
+  lessons          LMSLesson[]
+  enrollments      LMSEnrollment[]
+  quiz             LMSQuiz?
+  certifications   LMSCertification[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([category])
+  @@index([status])
+}
+
+model LMSLesson {
+  id        String    @id @default(uuid())
+  courseId  String
+  course    LMSCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title     String
+  content   String?   @db.Text
+  videoUrl  String?
+  order     Int       @default(0)
+  duration  Int       @default(10) // minutes
+  createdAt DateTime  @default(now())
+
+  @@index([courseId])
+}
+
+model LMSEnrollment {
+  id          String           @id @default(uuid())
+  courseId    String
+  course      LMSCourse        @relation(fields: [courseId], references: [id])
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  status      EnrollmentStatus @default(ENROLLED)
+  progress    Int              @default(0) // 0-100
+  completedAt DateTime?
+  enrolledAt  DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([courseId, userId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LMSQuiz {
+  id           String            @id @default(uuid())
+  courseId     String            @unique
+  course       LMSCourse         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  passingScore Int               @default(80)
+  timeLimitMins Int              @default(30)
+  questions    LMSQuizQuestion[]
+  attempts     LMSQuizAttempt[]
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model LMSQuizQuestion {
+  id           String   @id @default(uuid())
+  quizId       String
+  quiz         LMSQuiz  @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  question     String   @db.Text
+  options      String[]
+  correctIndex Int
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([quizId])
+}
+
+model LMSQuizAttempt {
+  id          String   @id @default(uuid())
+  quizId      String
+  quiz        LMSQuiz  @relation(fields: [quizId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  answers     Int[]
+  score       Float
+  passed      Boolean
+  attemptNo   Int      @default(1)
+  completedAt DateTime @default(now())
+
+  @@index([quizId])
+  @@index([userId])
+}
+
+model LMSCertification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  courseId  String
+  course    LMSCourse @relation(fields: [courseId], references: [id])
+  score     Float
+  issuedAt  DateTime  @default(now())
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+// ─── MARKETPLACE INTELLIGENCE ─────────────────────────────────────────────────
+
+model MarketplaceConnection {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform    String           // AMAZON | SHOPIFY | FLIPKART | MEESHO | D2C
+  status      String           @default("DISCONNECTED") // CONNECTED | DISCONNECTED | ERROR
+  mockToken   String?
+  storeName   String?
+  connectedAt DateTime?
+  salesData   SalesDataPoint[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([userId, platform])
+  @@index([userId])
+}
+
+model SalesDataPoint {
+  id           String                @id @default(uuid())
+  connectionId String
+  connection   MarketplaceConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  date         DateTime
+  platform     String
+  revenue      Float
+  orders       Int
+  glanceViews  Int
+  unitsSold    Int
+  isAnomaly    Boolean               @default(false)
+  anomalyNote  String?
+  createdAt    DateTime              @default(now())
+
+  @@unique([connectionId, date])
+  @@index([connectionId])
+  @@index([date])
+}
+
+// ─── ASSET & SECURITY REGISTER ───────────────────────────────────────────────
+
+model Asset {
+  id           String      @id @default(uuid())
+  name         String
+  type         AssetType
+  category     String      // HARDWARE | SOFTWARE
+  serialNo     String?
+  platform     String?     // e.g. AWS, GCP, Shopify — for API keys/credentials
+  description  String?     @db.Text
+  status       AssetStatus @default(AVAILABLE)
+  assignedToId String?
+  assignedTo   User?       @relation("AssetAssignee", fields: [assignedToId], references: [id])
+  assignedAt   DateTime?
+  revokedAt    DateTime?
+  revokedById  String?
+  notes        String?     @db.Text
+  createdById  String
+  createdBy    User        @relation("AssetCreator", fields: [createdById], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([type])
+  @@index([category])
+}
+
+model PriceChangeLog {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform      String
+  productName   String
+  asin          String?
+  oldPrice      Float
+  newPrice      Float
+  changePercent Float
+  changeType    String   // INCREASE | DECREASE
+  severity      String   // LOW | MEDIUM | HIGH | CRITICAL
+  detectedAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([detectedAt])
+}
